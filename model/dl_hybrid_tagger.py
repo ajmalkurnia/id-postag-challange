@@ -300,7 +300,7 @@ class DLHybridTagger():
         if not self.crf:
             # the label for Dense output layer needed to be onehot encoded
             out_seq = [
-                to_categorical(i, num_classes=self.n_label) for i in out_seq
+                to_categorical(i, num_classes=self.n_label+1) for i in out_seq
             ]
         return np.array(out_seq)
 

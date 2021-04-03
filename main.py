@@ -31,15 +31,28 @@ def process_cnn_rnn_crf(data):
         logging.info("Load model")
         hybrid_tagger = DLHybridTagger.load(args.loadmodel)
     else:
-        logging.info("CNN-RNN-CRF Training")
+        logging.info("DL Hybrid tagger Training")
         seq_length = {
             "idn_tagged_corpus": 90,
             "ud_id": 190
         }
-        hybrid_tagger = DLHybridTagger(
-            word_embed_file=args.embeddingfile, we_type=args.embeddingtype,
-            seq_length=seq_length[args.dataset], crf=True, char_embedding="cnn"
-        )
+        class_parameter = {
+            "word_embed_file": args.embeddingfile,
+            "we_type": args.embeddingtype,
+            "seq_length": seq_length[args.dataset]
+        }
+
+        if "crf" in args.model:
+            class_parameter["crf"] = True
+        else:
+            class_parameter["crf"] = False
+
+        if "cnn" in args.model:
+            class_parameter["char_embedding"] = "cnn"
+        else:
+            class_parameter["char_embedding"] = None
+
+        hybrid_tagger = DLHybridTagger(**class_parameter)
         hybrid_tagger.train(
             train[0], train[1], args.epoch, valid
         )
@@ -91,7 +104,7 @@ def main(args):
 
     if args.model == "crf":
         prediction = process_crf(dataset)
-    elif args.model == "cnn_rnn_crf":
+    elif "rnn" in args.model:
         prediction = process_cnn_rnn_crf(dataset)
 
     report = evaluate(prediction, dataset[1][1])
@@ -107,7 +120,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-m", "--model", type=str, help="Choose Model",
-        choices={"crf", "cnn_rnn_crf"}, default="crf"
+        choices={"crf", "cnn_rnn_crf", "cnn_rnn", "rnn_crf", "rnn"},
+        default="crf"
     )
     parser.add_argument(
         "--embeddingtype", type=str,
