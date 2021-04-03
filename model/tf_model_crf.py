@@ -18,8 +18,8 @@ def unpack_data(data):
 class ModelWithCRFLoss(tf.keras.Model):
     """Wrapper around the base model for custom training logic."""
 
-    def __init__(self, base_model):
-        super().__init__()
+    def __init__(self, base_model, **kwargs):
+        super(ModelWithCRFLoss, self).__init__(**kwargs)
         self.base_model = base_model
 
     def call(self, inputs):

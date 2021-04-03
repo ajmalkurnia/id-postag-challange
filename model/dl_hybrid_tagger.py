@@ -371,7 +371,7 @@ class DLHybridTagger():
             vector_y = self.vectorize_label(y)
         return X_input, vector_y
 
-    def train(self, X, y, n_epoch, valid_split, batch_size=32):
+    def train(self, X, y, n_epoch, valid_split, batch_size=128):
         """
         Prepare input and label data for the input
         :param X: list of list of string, tokenized input corpus
@@ -432,18 +432,21 @@ class DLHybridTagger():
             "class_param": f"{filename}_class.pkl"
         }
         with TemporaryDirectory() as tmp_dir:
-            network_path = f"{tmp_dir}/{filenames['model']}"
-            self.model.save(network_path, save_format="tf")
             class_param = {
                 "label2idx": self.label2idx,
                 "word2idx": self.word2idx,
-                "char2idx": self.char2idx,
                 "seq_length": self.seq_length,
                 "word_length": self.word_length,
-                "idx2label": self.idx2label
+                "idx2label": self.idx2label,
+                "crf": self.crf,
+                "char_embedding": self.char_embedding
             }
+            if self.char_embedding:
+                class_param["char2idx"] = self.char2idx
             with open(f"{tmp_dir}/{filenames['class_param']}", "wb") as pkl:
                 pickle.dump(class_param, pkl)
+            network_path = f"{tmp_dir}/{filenames['model']}"
+            self.model.save(network_path, save_format="tf")
             with ZipFile(filepath, "w") as zipf:
                 zipf.write(
                     f"{tmp_dir}/{filenames['class_param']}",
@@ -485,16 +488,18 @@ class DLHybridTagger():
                     }
                 )
                 model.summary()
-
             constructor_param = {
                 "seq_length": class_param["seq_length"],
-                "word_length": class_param["word_length"]
+                "word_length": class_param["word_length"],
+                "crf": class_param["crf"],
+                "char_embedding": class_param["char_embedding"]
             }
             classifier = DLHybridTagger(**constructor_param)
             classifier.model = model
             classifier.label2idx = class_param["label2idx"]
             classifier.word2idx = class_param["word2idx"]
-            classifier.char2idx = class_param["char2idx"]
             classifier.idx2label = class_param["idx2label"]
             classifier.n_label = len(classifier.label2idx)
+            if "char2idx" in class_param:
+                classifier.char2idx = class_param["char2idx"]
         return classifier
