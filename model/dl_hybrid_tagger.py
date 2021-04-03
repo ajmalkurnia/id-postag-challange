@@ -151,7 +151,7 @@ class DLHybridTagger():
         embedding_block = TimeDistributed(embedding_block)(seq_inp_layer)
         return seq_inp_layer, embedding_block
 
-    def __init_model(self):
+    def __init_model(self, y):
         """
         Initialize the network model
         """
@@ -181,8 +181,10 @@ class DLHybridTagger():
         ))(embed_block)
         self.model = Dropout(self.pre_outlayer_dropout)(self.model)
         if self.crf:
-            # CRF layer
-            crf = CRF(self.n_label+1)
+            crf = CRF(
+                self.n_label+1,
+                chain_initializer=Constant(self.__compute_transition_matrix(y))
+            )
             out = crf(self.model)
             self.model = Model(
                 inputs=input_layer, outputs=out
@@ -201,6 +203,23 @@ class DLHybridTagger():
             loss=self.loss,
             optimizer=self.optimizer
         )
+
+    def __compute_transition_matrix(self, y):
+        transition_matrix = np.zeros((self.n_labels+1, self.n_labels+1))
+        for data in y:
+            for idx, label in enumerate(data[:self.seq_length]):
+                if idx:
+                    current = self.lab2idx[label]
+                    prev = self.lab2idx[data[idx-1]]
+                    transition_matrix[prev][current] += 1
+            transition_matrix[current][0] += 1
+            zero_pad = self.seq_length - len(data)
+            if zero_pad > 1:
+                transition_matrix[0][0] += zero_pad
+        for row in enumerate(transition_matrix):
+            s = sum(row)
+            row[:] = (row + 1)/(s+self.n_labels+1)
+        return transition_matrix
 
     def __init_c2i(self):
         """
@@ -414,7 +433,7 @@ class DLHybridTagger():
 
         self.__init_w2i(X)
         self.__init_embedding()
-        self.__init_model()
+        self.__init_model(y)
 
         X_train, y_train = self.prepare_data(X, y)
         if valid_split:
