@@ -138,6 +138,7 @@ class DLHybridTagger():
         """
         Initialize the network model
         """
+        # Word Embebedding
         input_word_layer = Input(shape=(self.seq_length,), name="word")
         word_embed_block = Embedding(
             self.vocab_size+1, self.word_embed_size,
@@ -146,6 +147,7 @@ class DLHybridTagger():
         )
         word_embed_block = word_embed_block(input_word_layer)
         word_embed_block = Dropout(self.ed)(word_embed_block)
+        # Char Embedding
         if self.char_embedding == "cnn":
             input_char_layer, char_embed_block = self.__get_char_embedding()
             input_layer = [input_char_layer, input_word_layer]
@@ -153,24 +155,29 @@ class DLHybridTagger():
         else:
             embed_block = word_embed_block
             input_layer = input_word_layer
+        # RNN
         self.model = Bidirectional(LSTM(
             units=self.rnn_units, return_sequences=True,
             dropout=self.rd,
         ))(embed_block)
         self.model = Dropout(self.pre_crf_dropout)(self.model)
         if self.crf:
+            # CRF layer
             crf = CRF(self.n_label+1)
             out = crf(self.model)
             self.model = Model(
                 inputs=input_layer, outputs=out
             )
             self.model.summary()
+            # Subclassing to properly compute crf loss
             self.model = ModelWithCRFLoss(self.model)
         else:
+            # Dense layer
             out = TimeDistributed(Dense(
                 self.n_label+1, activation="softmax"
             ))(self.model)
             self.model = Model(input_layer, out)
+            self.model.summary()
         self.model.compile(
             loss="categorical_crossentropy",
             optimizer=self.optimizer
@@ -291,10 +298,10 @@ class DLHybridTagger():
             maxlen=self.seq_length, sequences=out_seq, padding="post"
         )
         if not self.crf:
+            # the label for Dense output layer needed to be onehot encoded
             out_seq = [
                 to_categorical(i, num_classes=self.n_label) for i in out_seq
             ]
-        #  To Category
         return np.array(out_seq)
 
     def get_crf_label(self, pred_sequence, input_data):
