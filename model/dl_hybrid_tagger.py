@@ -29,6 +29,51 @@ class DLHybridTagger():
         pre_crf_dropout=0.5, char_embedding="cnn", crf=True,
         conv_layers=[[30, 3, -1], [30, 2, -1], [30, 4, -1]],
     ):
+        """
+        Deep learning based sequence tagger.
+        Consist of:
+            - Char embedding (CNN Optional)
+            - RNN
+            - CRF (Optional)
+
+        :param seq_length: int, maximum sequence length in a data
+        :param word_length: int, maximum character length in a token,
+            relevant when char_embedding is not None
+        :param char_embed_size: int, the size of character level embedding,
+            relevant when char_embedding is not None
+        :param word_embed_size: int, the size of word level embedding,
+            relevant when not using pretrained embedding file
+        :param word_embed_file: string, path to pretrained word embedding
+        :param we_type: string, word embedding types:
+            random, supply any keras initilaizer string
+            pretrained, word embedding type of the word_embed_file,
+                available option: "w2v", "ft", "glove"
+        :param recurrent_dropout: float, dropout rate inside RNN
+        :param embedding_dropout: float, dropout rate after embedding layer
+        :param rnn_units: int, the number of rnn units
+        :param optimizer: string/object, any valid optimizer parameter
+            during model compilation
+        :param loss: string/object, any valid loss parameter
+            during model compilation
+        :param vocab_size: int, the size of vobulary for the embedding
+        :param pre_crf_dropout: float, dropout rate before CRF
+            relevant only when using CRF
+        :param char_embedding: string/none, the type of character embedding
+            valid option:
+            - "cnn" to use cnn based character embedding
+            - None to not use any character embedding
+        :param crf: bool, using CRF as output layer,
+            if false time distributed softmax layer will be used
+        :param conv_layers: list of list, convolution layer settings,
+            relevant when using cnn char embedding
+            each list component consist of 3 length tuple/list that denotes:
+                int, number of filter,
+                int, filter size,
+                int, maxpool size (use -1 to not use maxpooling)
+            each convolution layer is connected directly to embedding layer,
+            character information will be obtained by applying concatenation
+                and GlobalMaxPooling
+        """
 
         self.seq_length = seq_length
         self.word_length = word_length
@@ -54,6 +99,9 @@ class DLHybridTagger():
         self.vocab_size = vocab_size
 
     def __get_char_embedding(self):
+        """
+        Initialize character embedding
+        """
         word_input_layer = Input(shape=(self.word_length, ))
         # +1 for padding
         embedding_block = Embedding(
@@ -87,6 +135,9 @@ class DLHybridTagger():
         return seq_inp_layer, embedding_block
 
     def __init_model(self):
+        """
+        Initialize the network model
+        """
         input_word_layer = Input(shape=(self.seq_length,), name="word")
         word_embed_block = Embedding(
             self.vocab_size+1, self.word_embed_size,
@@ -126,11 +177,17 @@ class DLHybridTagger():
         )
 
     def __init_c2i(self):
+        """
+        Initialize character to index
+        """
         vocab = set([*string.printable])
         self.n_chars = len(vocab)
         self.char2idx = {ch: i+1 for i, ch in enumerate(vocab)}
 
     def __init_w2i(self, data):
+        """
+        Initialize word to index
+        """
         vocab = defaultdict(int)
         for s in data:
             for w in s:
@@ -142,6 +199,9 @@ class DLHybridTagger():
         self.word2idx = {word: idx+1 for idx, word in enumerate(vocab)}
 
     def __init_l2i(self, data):
+        """
+        Initialize label to index
+        """
         label = list(set([lb for sub in data for lb in sub]))
         self.n_label = len(label)
         self.label2idx = {ch: idx+1 for idx, ch in enumerate(sorted(label))}
@@ -162,6 +222,9 @@ class DLHybridTagger():
             self.word_embedding[idx, :] = wv_model.retrieve_vector(word)
 
     def __init_embedding(self):
+        """
+        Initialize argument for word embedding initializer
+        """
         if self.we_type in ["w2v", "ft", "glove"]:
             self.__init_wv_embedding()
             self.word_embedding = Constant(self.word_embedding)
@@ -169,6 +232,11 @@ class DLHybridTagger():
             self.word_embedding = self.we_type
 
     def __char_vector(self, inp_seq):
+        """
+        Get character vector of the input sequence
+        :param inp_seq: list of list of string, tokenized input corpus
+        :return vector_seq: 3D numpy array, input vector on character level
+        """
         vector_seq = np.zeros(
             (len(inp_seq), self.seq_length, self.word_length)
         )
@@ -182,6 +250,11 @@ class DLHybridTagger():
         return vector_seq
 
     def __word_vector(self, inp_seq):
+        """
+        Get word vector of the input sequence
+        :param inp_seq: list of list of string, tokenized input corpus
+        :return vector_seq: 2D numpy array, input vector on word level
+        """
         vector_seq = np.zeros((len(inp_seq), self.seq_length))
         for i, data in enumerate(inp_seq):
             data = data[:self.seq_length]
@@ -191,6 +264,13 @@ class DLHybridTagger():
         return vector_seq
 
     def vectorize_input(self, inp_seq):
+        """
+        Prepare vector of the input data
+        :param inp_seq: list of list of string, tokenized input corpus
+        :return word_vector: 2D numpy array, input vector on word level
+        :return char_vector: 3D numpy array, input vector on character level
+            return None when not using any char_embedding
+        """
         word_vector = self.__word_vector(inp_seq)
         if self.char_embedding:
             char_vector = self.__char_vector(inp_seq)
@@ -199,6 +279,13 @@ class DLHybridTagger():
         return word_vector, char_vector
 
     def vectorize_label(self, out_seq):
+        """
+        Get prepare vector of the label for training
+        :param out_seq: list of list of string, tokenized input corpus
+        :return out_seq: 2D/3D numpy array, vector of label data
+            return 2D array when using crf
+            return 3D array when not using crf
+        """
         out_seq = [[self.label2idx[w] for w in s] for s in out_seq]
         out_seq = pad_sequences(
             maxlen=self.seq_length, sequences=out_seq, padding="post"
@@ -211,6 +298,12 @@ class DLHybridTagger():
         return np.array(out_seq)
 
     def get_crf_label(self, pred_sequence, input_data):
+        """
+        Get label sequence
+        :param pred_sequence: 4 length list, prediction results from CRF layer
+        :param input_data: list of list of string, tokenized input corpus
+        :return label_seq: list of list of string, readable label sequence
+        """
         label_seq = []
         for i, s in enumerate(pred_sequence[0]):
             tmp = []
@@ -226,6 +319,12 @@ class DLHybridTagger():
         return label_seq
 
     def get_greedy_label(self, pred_sequence, input_data):
+        """
+        Get label sequence in greedy fashion
+        :param pred_sequence: 3D numpy array, prediction results
+        :param input_data: list of list of string, tokenized input corpus
+        :return label_seq: list of list of string, readable label sequence
+        """
         label_seq = []
         for i, s in enumerate(pred_sequence):
             tmp_pred = []
@@ -236,12 +335,25 @@ class DLHybridTagger():
         return label_seq
 
     def devectorize_label(self, pred_sequence, input_data):
+        """
+        Get readable label sequence
+        :param pred_sequence: 4 length list, prediction results from CRF layer
+        :param input_data: list of list of string, tokenized input corpus
+        :return label_seq: list of list of string, readable label sequence
+        """
         if self.crf:
             return self.get_crf_label(pred_sequence, input_data)
         else:
             return self.get_greedy_label(pred_sequence, input_data)
 
     def prepare_data(self, X, y=None):
+        """
+        Prepare input and label data for the input
+        :param X: list of list of string, tokenized input corpus
+        :param y: list of list of string, label sequence
+        :return X_input: dict, data input
+        :return y_vector: numpy array/None, vector of label data
+        """
         vector_word_X, vector_char_X = self.vectorize_input(X)
         X_input = {"word": vector_word_X}
         if self.char_embedding:
@@ -253,6 +365,16 @@ class DLHybridTagger():
         return X_input, vector_y
 
     def train(self, X, y, n_epoch, valid_split, batch_size=32):
+        """
+        Prepare input and label data for the input
+        :param X: list of list of string, tokenized input corpus
+        :param y: list of list of string, label sequence
+        :param n_epoch: int, number of training epoch
+        :param valid_split: tuple, validation data
+            shape: (X_validation, y_validation)
+        :param batch_size: int, size of the batch
+        :return history: output of the fit method
+        """
         self.__init_l2i(y)
         if self.char_embedding:
             self.__init_c2i()
@@ -282,6 +404,11 @@ class DLHybridTagger():
         return history
 
     def predict(self, X):
+        """
+        Perform prediction
+        :param X: list of list of string, tokenized input data
+        :return label_result: list of list of string, prediction results
+        """
         X_test, _ = self.prepare_data(X)
         pred_result = self.model.predict(X_test)
         label_result = self.devectorize_label(pred_result, X)
@@ -329,6 +456,7 @@ class DLHybridTagger():
         """
         Load model from the saved zipfile
         :param filepath: path to model zip file
+        :return classifier: Loaded model class
         """
         with ZipFile(filepath, "r") as zipf:
             filelist = zipf.filelist
