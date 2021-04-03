@@ -7,6 +7,14 @@ Explore pos-tagging on various indonesian dataset using crf and deep learing met
 1. IDN Tagger Corpus (IDN) [Link](https://github.com/famrashel/idn-tagged-corpus)
 2. Indonesian Dependency Corpus (UD ID) [Link](https://github.com/UniversalDependencies/UD_Indonesian-GSD)
 
+| Stat.          | IDN     | UD ID  |
+| -------------- | ------- | ------ |
+| #Sentences     | 10030   | 5593   |
+| #Words         | 256622  | 121923 |
+| #Characters    | 1427666 | 629578 |
+| Unique words   | 18287   | 22221  |
+| Unique POS-Tag | 24      | 16     |
+
 ## Model
 
 1. CRF
@@ -128,13 +136,13 @@ Due to data imbalances, all listed performance is calculated with **weighted-mac
 
 ### IDN Tagger Corpus
 
-| Method      | Precision | Recall | F1-score |
-| ----------- | --------- | ------ | -------- |
-| CRF         | 0.9723    | 0.9724 | 0.9721   |
-| RNN         | 0.9640    | 0.9639 | 0.9637   |
-| CNN-RNN     | 0.9693    | 0.9694 | 0.9692   |
-| RNN-CRF     | 0.9641    | 0.9638 | 0.9635   |
-| CNN-RNN-CRF | 0.9682    | 0.9679 | 0.9677   |
+| Method      | Precision  | Recall     | F1-score   |
+| ----------- | ---------- | ---------- | ---------- |
+| CRF         | **0.9723** | **0.9724** | **0.9721** |
+| RNN         | 0.9640     | 0.9639     | 0.9637     |
+| CNN-RNN     | 0.9693     | 0.9694     | 0.9692     |
+| RNN-CRF     | 0.9645     | 0.9644     | 0.9641     |
+| CNN-RNN-CRF | 0.9694     | 0.9694     | 0.9691     |
 
 ### UD ID
 
@@ -143,8 +151,8 @@ Due to data imbalances, all listed performance is calculated with **weighted-mac
 | CRF         | **0.9368** | **0.9367** | **0.9366** |
 | RNN         | 0.9118     | 0.9083     | 0.9083     |
 | CNN-RNN     | 0.9278     | 0.9275     | 0.9271     |
-| RNN-CRF     | 0.9119     | 0.9082     | 0.9082     |
-| CNN-RNN-CRF | 0.9275     | 0.9267     | 0.9263     |
+| RNN-CRF     | 0.9109     | 0.9074     | 0.9074     |
+| CNN-RNN-CRF | 0.9290     | 0.9287     | 0.9284     |
 
 ## References
 1. [CNN-RNN-CRF](https://www.aclweb.org/anthology/P16-1101/)

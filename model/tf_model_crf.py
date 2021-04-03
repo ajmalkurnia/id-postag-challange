@@ -44,7 +44,8 @@ class ModelWithCRFLoss(tf.keras.Model):
             crf_loss, internal_losses = self.compute_loss(
                 x, y, sample_weight, training=True
             )
-            total_loss = crf_loss + internal_losses
+            total_loss = crf_loss + \
+                tf.cast(tf.reduce_sum(self.losses), crf_loss.dtype)
 
         gradients = tape.gradient(total_loss, self.trainable_variables)
         self.optimizer.apply_gradients(
