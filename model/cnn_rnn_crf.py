@@ -1,6 +1,7 @@
 from keras.layers import LSTM, Embedding, TimeDistributed, Concatenate
 from keras.layers import Dropout, Bidirectional, Conv1D, MaxPooling1D
-from keras.layers import GlobalMaxPool1D
+from keras.layers import GlobalMaxPool1D, Dense
+from keras.utils import to_categorical
 from keras.initializers import Constant, RandomUniform
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model, Input, load_model
@@ -24,7 +25,8 @@ class CNNRNNCRFTagger():
         self, seq_length=100, word_length=50, char_embed_size=30,
         word_embed_size=100, word_embed_file=None, we_type="glorot_normal",
         recurrent_dropout=0.5, embedding_dropout=0.5, rnn_units=100,
-        optimizer="adam", vocab_size=10000, pre_crf_dropout=0.5,
+        optimizer="adam", loss="categorical_crossentropy", vocab_size=10000,
+        pre_crf_dropout=0.5, char_embedding="cnn", crf=True,
         conv_layers=[[30, 3, -1], [30, 2, -1], [30, 4, -1]],
     ):
 
@@ -40,10 +42,14 @@ class CNNRNNCRFTagger():
         self.rnn_units = rnn_units
         self.rd = recurrent_dropout
         self.ed = embedding_dropout
-        self.pre_crf_dropout = pre_crf_dropout
 
+        self.pre_crf_dropout = pre_crf_dropout
+        self.crf = crf
+
+        self.char_embedding = char_embedding
         self.conv_layers = conv_layers
 
+        self.loss = loss
         self.optimizer = optimizer
         self.vocab_size = vocab_size
 
@@ -96,13 +102,19 @@ class CNNRNNCRFTagger():
             dropout=self.rd,
         ))(embed_block)
         self.model = Dropout(self.pre_crf_dropout)(self.model)
-        crf = CRF(self.n_label+1)
-        out = crf(self.model)
-        self.model = Model(
-            inputs=[input_char_layer, input_word_layer], outputs=out
-        )
-        self.model.summary()
-        self.model = ModelWithCRFLoss(self.model)
+        if self.crf:
+            crf = CRF(self.n_label+1)
+            out = crf(self.model)
+            self.model = Model(
+                inputs=[input_char_layer, input_word_layer], outputs=out
+            )
+            self.model.summary()
+            self.model = ModelWithCRFLoss(self.model)
+        else:
+            out = TimeDistributed(Dense(
+                self.n_label+1, activation="softmax"
+            ))(self.model)
+            self.model = Model([input_char_layer, input_word_layer], out)
         self.model.compile(
             loss="categorical_crossentropy",
             optimizer=self.optimizer
@@ -183,9 +195,14 @@ class CNNRNNCRFTagger():
         out_seq = pad_sequences(
             maxlen=self.seq_length, sequences=out_seq, padding="post"
         )
+        if not self.crf:
+            out_seq = [
+                to_categorical(i, num_classes=self.n_label) for i in out_seq
+            ]
+        #  To Category
         return np.array(out_seq)
 
-    def devectorize_label(self, pred_sequence, input_data):
+    def get_crf_label(self, pred_sequence, input_data):
         label_seq = []
         for i, s in enumerate(pred_sequence[0]):
             tmp = []
@@ -200,6 +217,29 @@ class CNNRNNCRFTagger():
             label_seq.append(tmp)
         return label_seq
 
+    def get_greedy_label(self, pred_sequence, input_data):
+        label_seq = []
+        for i, s in enumerate(pred_sequence):
+            tmp_pred = []
+            for j, w in enumerate(s):
+                if j < len(input_data[i]):
+                    tmp_pred.append(self.idx2label[np.argmax(w[1:])+1])
+            label_seq.append(tmp_pred)
+        return label_seq
+
+    def devectorize_label(self, pred_sequence, input_data):
+        if self.crf:
+            return self.get_crf_label(pred_sequence, input_data)
+        else:
+            return self.get_greedy_label(pred_sequence, input_data)
+
+    def prepare_data(self, X, y=None):
+        vector_char_X, vector_word_X = self.vectorize_input(X)
+        vector_y = None
+        if y is not None:
+            vector_y = self.vectorize_label(y)
+        return {"char": vector_char_X, "word": vector_word_X}, vector_y
+
     def train(self, X, y, n_epoch, valid_split, batch_size=32):
         self.__init_l2i(y)
         self.__init_c2i()
@@ -207,36 +247,29 @@ class CNNRNNCRFTagger():
         self.__init_embedding()
         self.__init_model()
 
-        vector_char_X, vector_word_X = self.vectorize_input(X)
-        vector_y = self.vectorize_label(y)
-        char_X_valid, word_X_valid = self.vectorize_input(valid_split[0])
-        y_valid = self.vectorize_label(valid_split[1])
-
+        X_train, y_train = self.prepare_data(X, y)
+        X_valid, y_valid = self.prepare_data(valid_split[0], valid_split[1])
         es = EarlyStopping(
-            monitor="val_crf_loss",
+            monitor="val_crf_loss" if self.crf else "val_loss",
             patience=10,
             verbose=1,
             mode="min",
             restore_best_weights=True
         )
         history = self.model.fit(
-            {"char": vector_char_X, "word": vector_word_X},
-            vector_y,
+            X_train,
+            y_train,
             batch_size=batch_size,
             epochs=n_epoch,
-            validation_data=({
-                "char": char_X_valid, "word": word_X_valid
-            }, y_valid),
+            validation_data=(X_valid, y_valid),
             verbose=1,
             callbacks=[es]
         )
         return history
 
     def predict(self, X, batch_size=32):
-        char_X, word_X = self.vectorize_input(X)
-        pred_result = self.model.predict({
-            "char": char_X, "word": word_X
-        })
+        X_test, _ = self.prepare_data(X)
+        pred_result = self.model.predict(X_test)
         label_result = self.devectorize_label(pred_result, X)
         return label_result
 
