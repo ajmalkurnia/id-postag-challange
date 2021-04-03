@@ -87,7 +87,6 @@ class CNNRNNCRFTagger():
         return seq_inp_layer, embedding_block
 
     def __init_model(self):
-        input_char_layer, char_embed_block = self.__get_char_embedding()
         input_word_layer = Input(shape=(self.seq_length,), name="word")
         word_embed_block = Embedding(
             self.vocab_size+1, self.word_embed_size,
@@ -96,7 +95,13 @@ class CNNRNNCRFTagger():
         )
         word_embed_block = word_embed_block(input_word_layer)
         word_embed_block = Dropout(self.ed)(word_embed_block)
-        embed_block = Concatenate()([char_embed_block, word_embed_block])
+        if self.char_embedding == "cnn":
+            input_char_layer, char_embed_block = self.__get_char_embedding()
+            input_layer = [input_char_layer, input_word_layer]
+            embed_block = Concatenate()([char_embed_block, word_embed_block])
+        else:
+            embed_block = word_embed_block
+            input_layer = input_word_layer
         self.model = Bidirectional(LSTM(
             units=self.rnn_units, return_sequences=True,
             dropout=self.rd,
@@ -106,7 +111,7 @@ class CNNRNNCRFTagger():
             crf = CRF(self.n_label+1)
             out = crf(self.model)
             self.model = Model(
-                inputs=[input_char_layer, input_word_layer], outputs=out
+                inputs=input_layer, outputs=out
             )
             self.model.summary()
             self.model = ModelWithCRFLoss(self.model)
@@ -114,7 +119,7 @@ class CNNRNNCRFTagger():
             out = TimeDistributed(Dense(
                 self.n_label+1, activation="softmax"
             ))(self.model)
-            self.model = Model([input_char_layer, input_word_layer], out)
+            self.model = Model(input_layer, out)
         self.model.compile(
             loss="categorical_crossentropy",
             optimizer=self.optimizer
@@ -186,9 +191,12 @@ class CNNRNNCRFTagger():
         return vector_seq
 
     def vectorize_input(self, inp_seq):
-        char_vector = self.__char_vector(inp_seq)
         word_vector = self.__word_vector(inp_seq)
-        return char_vector, word_vector
+        if self.char_embedding:
+            char_vector = self.__char_vector(inp_seq)
+        else:
+            char_vector = None
+        return word_vector, char_vector
 
     def vectorize_label(self, out_seq):
         out_seq = [[self.label2idx[w] for w in s] for s in out_seq]
@@ -234,15 +242,21 @@ class CNNRNNCRFTagger():
             return self.get_greedy_label(pred_sequence, input_data)
 
     def prepare_data(self, X, y=None):
-        vector_char_X, vector_word_X = self.vectorize_input(X)
+        vector_word_X, vector_char_X = self.vectorize_input(X)
+        X_input = {"word": vector_word_X}
+        if self.char_embedding:
+            X_input["char"] = vector_char_X
+
         vector_y = None
         if y is not None:
             vector_y = self.vectorize_label(y)
-        return {"char": vector_char_X, "word": vector_word_X}, vector_y
+        return X_input, vector_y
 
     def train(self, X, y, n_epoch, valid_split, batch_size=32):
         self.__init_l2i(y)
-        self.__init_c2i()
+        if self.char_embedding:
+            self.__init_c2i()
+
         self.__init_w2i(X)
         self.__init_embedding()
         self.__init_model()
@@ -267,7 +281,7 @@ class CNNRNNCRFTagger():
         )
         return history
 
-    def predict(self, X, batch_size=32):
+    def predict(self, X):
         X_test, _ = self.prepare_data(X)
         pred_result = self.model.predict(X_test)
         label_result = self.devectorize_label(pred_result, X)
