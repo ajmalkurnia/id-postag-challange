@@ -30,11 +30,12 @@ class ModelWithCRFLoss(tf.keras.Model):
         _, potentials, sequence_length, chain_kernel = y_pred
         crf_loss = -crf_log_likelihood(potentials,
                                        y, sequence_length, chain_kernel)[0]
-
+        internal_loss = self.compiled_loss(
+            y, potentials, regularization_losses=self.losses)
         if sample_weight is not None:
             crf_loss = crf_loss * sample_weight
 
-        return tf.reduce_mean(crf_loss), sum(self.losses)
+        return tf.reduce_mean(crf_loss), internal_loss
 
     def train_step(self, data):
         x, y, sample_weight = unpack_data(data)
