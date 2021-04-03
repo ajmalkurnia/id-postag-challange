@@ -115,31 +115,31 @@ def main(args):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        "-d", "--dataset", type=str, help="Choose Dataset",
+        "-d", "--dataset", type=str, help="Choose dataset",
         choices={"idn_tagged_corpus", "ud_id"}, default="idn_tagged_corpus"
     )
     parser.add_argument(
-        "-m", "--model", type=str, help="Choose Model",
+        "-m", "--model", type=str, help="Choose model",
         choices={"crf", "cnn_rnn_crf", "cnn_rnn", "rnn_crf", "rnn"},
         default="crf"
     )
     parser.add_argument(
         "--embeddingtype", type=str,
-        help="Word Embedding (Deep learning only)",
+        help="Word embedding type (Deep learning only)",
         choices={"w2v", "ft", "glove", "glorot_uniform"},
         default="glorot_uniform"
     )
     parser.add_argument(
         "--embeddingfile", type=str,
-        help="Path to Word embedding pretrained model (Deep learning only)"
+        help="Path to word embedding pretrained model (deep learning only), supply .bin for word2vec and fasttext, supply .txt for glove" # noqa
     )
 
     parser.add_argument(
         "--epoch", type=int, default=100,
-        help="Training epoch (Deep learning only)"
+        help="Training epoch (deep learning only)"
     )
-    parser.add_argument("--savemodel", type=str, help="Path to save model")
-    parser.add_argument("--loadmodel", type=str, help="Path to load model")
-    parser.add_argument("--logfile", type=str, help="Log file")
+    parser.add_argument("--savemodel", type=str, help="Path to save model.zip")
+    parser.add_argument("--loadmodel", type=str, help="Path to load model.zip")
+    parser.add_argument("--logfile", type=str, help="Path to save log file")
     args = parser.parse_args()
     main(args)

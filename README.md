@@ -10,7 +10,12 @@ Explore pos-tagging on various indonesian dataset using crf and deep learing met
 ## Model
 
 1. CRF
-2. CNN-BiLSTM-CRF
+2. RNN
+3. CNN-RNN
+4. RNN-CRF
+5. CNN-RNN-CRF
+
+The link of pretrained model will be provided
 
 ### 1. CRF
 
@@ -22,7 +27,19 @@ Features        :
  - 3-token surrounding current character with `["BOS"]` and `["EOS"]` added in the beginning and ending of a sentence
  - Various morphology features, such as, `is_alpha`, `is_numeric`, `is_punct`, `has_alpha`, `has_numeric`, `has_punct`, `is_upper_case`, `is_init_upper_case`
 
-#### 2. CNN-BiLSTM-CRF
+#### 2. RNN
+Implementation  : Keras
+Hyperparameter  : 
+- Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
+- RNN : LSTM with 100 unit, bidirectional
+- dropout : 0.5 (after Embedding, inside RNN, after RNN)
+- optimizer : "adam"
+- Vocab size : 10k
+- Train Epoch : 100 + early stopping with 10 patience based on validation
+Architecture    :
+  - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> BiLSTM -> Dropout -> Softmax
+
+#### 3. CNN-RNN
 Implementation  : Keras + Tensorflow Addon (for CRF layer)
 Hyperparameter  : 
 - CNN embedding config : 3 seperate conv. layer 
@@ -30,13 +47,70 @@ Hyperparameter  :
   - #filter = 30, filter_size = 3
   - #filter = 30, filter_size = 4 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
-- LSTM Unit : 100
-- dropout : 0.5 (after char embedding, after RNN)
+- RNN : LSTM with 100 unit, bidirectional
+- dropout : 0.5 (after Embedding, inside RNN, after RNN)
 - optimizer : "adam"
 - Vocab size : 10k
+- Train Epoch : 100 + early stopping with 10 patience based on validation
+Architecture    :
+  - char_embedding : [Char level input] -> CNN -> Concat all CNN -> GlobalMaxPooling1D -> Dropout
+  - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> Concat(char_embedding, word_embedding) -> BiLSTM -> Dropout -> Softmax
+
+#### 4. RNN-CRF
+Implementation  : Keras + Tensorflow Addon (for CRF layer)
+Hyperparameter  : 
+- Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
+- RNN : LSTM with 100 unit, bidirectional
+- dropout : 0.5 (after Embedding, inside RNN, after RNN)
+- optimizer : "adam"
+- Vocab size : 10k
+- Train Epoch : 100 + early stopping with 10 patience based on validation
 Architecture    :
   - char_embedding : [Char level input] -> CNN -> Concat all CNN -> GlobalMaxPooling1D -> Dropout
   - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> Concat(char_embedding, word_embedding) -> BiLSTM -> Dropout -> CRF
+
+#### 5. CNN-RNN-CRF
+Implementation  : Keras + Tensorflow Addon (for CRF layer)
+Hyperparameter  : 
+- CNN embedding config : 3 seperate conv. layer 
+  - #filter = 30, filter_size = 2
+  - #filter = 30, filter_size = 3
+  - #filter = 30, filter_size = 4 
+- Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
+- RNN : LSTM with 100 unit, bidirectional
+- dropout : 0.5 (after Embedding, inside RNN, after RNN
+- optimizer : "adam"
+- Vocab size : 10k
+- Train Epoch : 100 + early stopping with 10 patience based on validation
+Architecture    :
+  - char_embedding : [Char level input] -> CNN -> Concat all CNN -> GlobalMaxPooling1D -> Dropout
+  - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> Concat(char_embedding, word_embedding) -> BiLSTM -> Dropout -> CRF
+
+## Demo
+
+- Run the crf training on idn_tagged_dataset
+```
+python3 -d idn_tagged_dataset -m crf
+```
+- Saving model
+```
+python3 -d idn_tagged_dataset -m crf --savemodel PATH/TO/MODEL.zip
+```
+- Load model
+```
+python3 -d idn_tagged_dataset -m crf --loadmodel PATH/TO/MODEL.zip
+```
+- Other configurations
+```
+main.py [-h] [--dataset {idn_tagged_corpus, ud_id}]
+               [--model {crf, cnn_rnn, cnn_rnn_crf, rnn, rnn_crf}]
+               [--embeddingtype {w2v, glove, ft, glorot_uniform}]
+               [--embeddingfile PATH/TO/PRETRAINED/WORD/VECTOR.bin]
+               [--epoch TRAINING_EPOCH]
+               [--savemodel PATH/TO/MODEL.zip]
+               [--loadmodel PATH/TO/MODEL.zip]
+               [--logfile LOGFILE]
+```
 
 ## Results
 
@@ -47,14 +121,20 @@ Due to data imbalances, all listed performance is calculated with weighted-macro
 | Method      | Precision | Recall | F1-score |
 | ----------- | --------- | ------ | -------- |
 | CRF         | 0.9723    | 0.9724 | 0.9721   |
-| CNN-RNN-CRF | 0.9672    | 0.9670 | 0.9667   |
+| RNN         |           |        |          |
+| CNN-RNN     |           |        |          |
+| RNN-CRF     |           |        |          |
+| CNN-RNN-CRF |           |        |          |
 
 ### UD ID
 
 | Method      | Precision | Recall | F1-score |
 | ----------- | --------- | ------ | -------- |
 | CRF         | 0.9368    | 0.9367 | 0.9366   |
-| CNN-RNN-CRF | 0.9263    | 0.9260 | 0.9256   |
+| RNN         | 0.9118    | 0.9083 | 0.9083   |
+| CNN-RNN     |           |        |          |
+| RNN-CRF     |           |        |          |
+| CNN-RNN-CRF |           |        |          |
 
 ## References
 1. [CNN-RNN-CRF](https://www.aclweb.org/anthology/P16-1101/)
