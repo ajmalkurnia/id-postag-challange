@@ -25,8 +25,8 @@ class DLHybridTagger():
         self, seq_length=100, word_length=50, char_embed_size=30,
         word_embed_size=100, word_embed_file=None, we_type="glorot_normal",
         recurrent_dropout=0.5, embedding_dropout=0.5, rnn_units=100,
-        optimizer="adam", loss="categorical_crossentropy", vocab_size=10000,
-        pre_crf_dropout=0.5, char_embedding="cnn", crf=True,
+        optimizer="adam", loss=None, vocab_size=10000,
+        pre_outlayer_dropout=0.5, char_embedding="cnn", crf=True,
         conv_layers=[[30, 3, -1], [30, 2, -1], [30, 4, -1]],
     ):
         """
@@ -56,8 +56,7 @@ class DLHybridTagger():
         :param loss: string/object, any valid loss parameter
             during model compilation
         :param vocab_size: int, the size of vobulary for the embedding
-        :param pre_crf_dropout: float, dropout rate before CRF
-            relevant only when using CRF
+        :param pre_outlayer_dropout: float, dropout rate before output layer
         :param char_embedding: string/none, the type of character embedding
             valid option:
             - "cnn" to use cnn based character embedding
@@ -84,17 +83,33 @@ class DLHybridTagger():
         self.word_embed_file = word_embed_file
         self.we_type = we_type
 
+        if we_type in ["w2v", "ft", "glove"] and word_embed_file is None:
+            raise ValueError(
+                "Supply parameter word_embed_file when using w2v/ft/glove embedding" # noqa
+            )
+
         self.rnn_units = rnn_units
         self.rd = recurrent_dropout
         self.ed = embedding_dropout
 
-        self.pre_crf_dropout = pre_crf_dropout
+        self.pre_outlayer_dropout = pre_outlayer_dropout
         self.crf = crf
 
         self.char_embedding = char_embedding
+        if self.char_embedding not in ["cnn", None]:
+            raise ValueError(
+                "Invalid character embedding, valid value: 'cnn' or None"
+            )
+
         self.conv_layers = conv_layers
 
-        self.loss = loss
+        if loss is None and self.crf:
+            self.loss = "sparse_categorical_crossentropy"
+        elif loss is None:
+            self.loss = "categorical_crossentropy"
+        else:
+            self.loss = loss
+
         self.optimizer = optimizer
         self.vocab_size = vocab_size
 
@@ -124,7 +139,8 @@ class DLHybridTagger():
             conv_layers.append(conv_layer)
         embedding_block = Concatenate(axis=1)(conv_layers)
         embedding_block = GlobalMaxPool1D()(embedding_block)
-        embedding_block = Dropout(self.ed)(embedding_block)
+        if self.ed > 0:
+            embedding_block = Dropout(self.ed)(embedding_block)
         embedding_block = Model(
             inputs=word_input_layer, outputs=embedding_block)
         embedding_block.summary()
@@ -146,7 +162,8 @@ class DLHybridTagger():
             embeddings_initializer=self.word_embedding,
         )
         word_embed_block = word_embed_block(input_word_layer)
-        word_embed_block = Dropout(self.ed)(word_embed_block)
+        if self.ed > 0:
+            word_embed_block = Dropout(self.ed)(word_embed_block)
         # Char Embedding
         if self.char_embedding == "cnn":
             input_char_layer, char_embed_block = self.__get_char_embedding()
@@ -160,7 +177,7 @@ class DLHybridTagger():
             units=self.rnn_units, return_sequences=True,
             dropout=self.rd,
         ))(embed_block)
-        self.model = Dropout(self.pre_crf_dropout)(self.model)
+        self.model = Dropout(self.pre_outlayer_dropout)(self.model)
         if self.crf:
             # CRF layer
             crf = CRF(self.n_label+1)
@@ -179,7 +196,7 @@ class DLHybridTagger():
             self.model = Model(input_layer, out)
             self.model.summary()
         self.model.compile(
-            loss="categorical_crossentropy",
+            loss=self.loss,
             optimizer=self.optimizer
         )
 
@@ -371,7 +388,7 @@ class DLHybridTagger():
             vector_y = self.vectorize_label(y)
         return X_input, vector_y
 
-    def train(self, X, y, n_epoch, valid_split, batch_size=128):
+    def train(self, X, y, n_epoch=10, valid_split=None, batch_size=128):
         """
         Prepare input and label data for the input
         :param X: list of list of string, tokenized input corpus
@@ -391,22 +408,26 @@ class DLHybridTagger():
         self.__init_model()
 
         X_train, y_train = self.prepare_data(X, y)
-        X_valid, y_valid = self.prepare_data(valid_split[0], valid_split[1])
-        es = EarlyStopping(
-            monitor="val_crf_loss" if self.crf else "val_loss",
-            patience=10,
-            verbose=1,
-            mode="min",
-            restore_best_weights=True
-        )
+        if valid_split:
+            valid_split = self.prepare_data(valid_split[0], valid_split[1])
+            es = EarlyStopping(
+                monitor="val_crf_loss" if self.crf else "val_loss",
+                patience=10,
+                verbose=1,
+                mode="min",
+                restore_best_weights=True
+            )
+            callback = [es]
+        else:
+            callback = []
         history = self.model.fit(
             X_train,
             y_train,
             batch_size=batch_size,
             epochs=n_epoch,
-            validation_data=(X_valid, y_valid),
+            validation_data=valid_split,
             verbose=1,
-            callbacks=[es]
+            callbacks=callback
         )
         return history
 
