@@ -20,7 +20,9 @@ The link of pretrained model will be provided
 ### 1. CRF
 
 Implementation  : sklearn_crfsuite
+
 Hyperparameter  : default
+
 Features        : 
  - Character [1, 6]-gram with added `«` and `»` in the beginning and end of a word
  - Relative position of a token, calculated with `pos/len(text)` 
@@ -29,6 +31,7 @@ Features        :
 
 #### 2. RNN
 Implementation  : Keras
+
 Hyperparameter  : 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
 - RNN : LSTM with 100 unit, bidirectional
@@ -36,11 +39,13 @@ Hyperparameter  :
 - optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
+
 Architecture    :
   - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> BiLSTM -> Dropout -> Softmax
 
 #### 3. CNN-RNN
 Implementation  : Keras + Tensorflow Addon (for CRF layer)
+
 Hyperparameter  : 
 - CNN embedding config : 3 seperate conv. layer 
   - #filter = 30, filter_size = 2
@@ -52,12 +57,14 @@ Hyperparameter  :
 - optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
+
 Architecture    :
   - char_embedding : [Char level input] -> CNN -> Concat all CNN -> GlobalMaxPooling1D -> Dropout
   - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> Concat(char_embedding, word_embedding) -> BiLSTM -> Dropout -> Softmax
 
 #### 4. RNN-CRF
 Implementation  : Keras + Tensorflow Addon (for CRF layer)
+
 Hyperparameter  : 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
 - RNN : LSTM with 100 unit, bidirectional
@@ -65,12 +72,14 @@ Hyperparameter  :
 - optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
+
 Architecture    :
   - char_embedding : [Char level input] -> CNN -> Concat all CNN -> GlobalMaxPooling1D -> Dropout
   - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> Concat(char_embedding, word_embedding) -> BiLSTM -> Dropout -> CRF
 
 #### 5. CNN-RNN-CRF
 Implementation  : Keras + Tensorflow Addon (for CRF layer)
+
 Hyperparameter  : 
 - CNN embedding config : 3 seperate conv. layer 
   - #filter = 30, filter_size = 2
@@ -82,6 +91,7 @@ Hyperparameter  :
 - optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
+  
 Architecture    :
   - char_embedding : [Char level input] -> CNN -> Concat all CNN -> GlobalMaxPooling1D -> Dropout
   - Sequence : [Word level input] -> Pretrained Word embedding -> Dropout -> Concat(char_embedding, word_embedding) -> BiLSTM -> Dropout -> CRF
@@ -114,27 +124,27 @@ main.py [-h] [--dataset {idn_tagged_corpus, ud_id}]
 
 ## Results
 
-Due to data imbalances, all listed performance is calculated with weighted-macro-average instead of reguler macro-average
+Due to data imbalances, all listed performance is calculated with **weighted-macro-average** instead of reguler macro-average
 
 ### IDN Tagger Corpus
 
 | Method      | Precision | Recall | F1-score |
 | ----------- | --------- | ------ | -------- |
 | CRF         | 0.9723    | 0.9724 | 0.9721   |
-| RNN         |           |        |          |
-| CNN-RNN     |           |        |          |
-| RNN-CRF     |           |        |          |
-| CNN-RNN-CRF |           |        |          |
+| RNN         | 0.9640    | 0.9639 | 0.9637   |
+| CNN-RNN     | 0.9693    | 0.9694 | 0.9692   |
+| RNN-CRF     | 0.9641    | 0.9638 | 0.9635   |
+| CNN-RNN-CRF | 0.9682    | 0.9679 | 0.9677   |
 
 ### UD ID
 
-| Method      | Precision | Recall | F1-score |
-| ----------- | --------- | ------ | -------- |
-| CRF         | 0.9368    | 0.9367 | 0.9366   |
-| RNN         | 0.9118    | 0.9083 | 0.9083   |
-| CNN-RNN     | 0.9278    | 0.9275 | 0.9271   |
-| RNN-CRF     |           |        |          |
-| CNN-RNN-CRF |           |        |          |
+| Method      | Precision  | Recall     | F1-score   |
+| ----------- | ---------- | ---------- | ---------- |
+| CRF         | **0.9368** | **0.9367** | **0.9366** |
+| RNN         | 0.9118     | 0.9083     | 0.9083     |
+| CNN-RNN     | 0.9278     | 0.9275     | 0.9271     |
+| RNN-CRF     | 0.9119     | 0.9082     | 0.9082     |
+| CNN-RNN-CRF | 0.9275     | 0.9267     | 0.9263     |
 
 ## References
 1. [CNN-RNN-CRF](https://www.aclweb.org/anthology/P16-1101/)
