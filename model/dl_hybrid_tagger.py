@@ -205,20 +205,20 @@ class DLHybridTagger():
         )
 
     def __compute_transition_matrix(self, y):
-        transition_matrix = np.zeros((self.n_labels+1, self.n_labels+1))
+        transition_matrix = np.zeros((self.n_label+1, self.n_label+1))
         for data in y:
             for idx, label in enumerate(data[:self.seq_length]):
                 if idx:
-                    current = self.lab2idx[label]
-                    prev = self.lab2idx[data[idx-1]]
+                    current = self.label2idx[label]
+                    prev = self.label2idx[data[idx-1]]
                     transition_matrix[prev][current] += 1
             transition_matrix[current][0] += 1
             zero_pad = self.seq_length - len(data)
             if zero_pad > 1:
                 transition_matrix[0][0] += zero_pad
-        for row in enumerate(transition_matrix):
+        for row in transition_matrix:
             s = sum(row)
-            row[:] = (row + 1)/(s+self.n_labels+1)
+            row[:] = (row + 1)/(s+self.n_label+1)
         return transition_matrix
 
     def __init_c2i(self):

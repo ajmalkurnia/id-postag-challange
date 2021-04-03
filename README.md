@@ -132,7 +132,7 @@ Due to data imbalances, all listed performance is calculated with weighted-macro
 | ----------- | --------- | ------ | -------- |
 | CRF         | 0.9368    | 0.9367 | 0.9366   |
 | RNN         | 0.9118    | 0.9083 | 0.9083   |
-| CNN-RNN     |           |        |          |
+| CNN-RNN     | 0.9278    | 0.9275 | 0.9271   |
 | RNN-CRF     |           |        |          |
 | CNN-RNN-CRF |           |        |          |
 
