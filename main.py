@@ -1,5 +1,5 @@
 from model.crf import CRFTagger
-from model.cnn_rnn_crf import CNNRNNCRFTagger
+from model.dl_hybrid_tagger import DLHybridTagger
 from common import datautils
 from argparse import ArgumentParser
 from sklearn.metrics import classification_report
@@ -29,16 +29,16 @@ def process_cnn_rnn_crf(data):
     train, test, valid = data
     if args.loadmodel:
         logging.info("Load model")
-        hybrid_tagger = CNNRNNCRFTagger.load(args.loadmodel)
+        hybrid_tagger = DLHybridTagger.load(args.loadmodel)
     else:
         logging.info("CNN-RNN-CRF Training")
         seq_length = {
             "idn_tagged_corpus": 90,
             "ud_id": 190
         }
-        hybrid_tagger = CNNRNNCRFTagger(
+        hybrid_tagger = DLHybridTagger(
             word_embed_file=args.embeddingfile, we_type=args.embeddingtype,
-            seq_length=seq_length[args.dataset]
+            seq_length=seq_length[args.dataset], crf=True, char_embedding="cnn"
         )
         hybrid_tagger.train(
             train[0], train[1], args.epoch, valid
