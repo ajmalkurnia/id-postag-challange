@@ -23,7 +23,7 @@ Explore pos-tagging on various indonesian dataset using crf and deep learing met
 4. RNN-CRF
 5. CNN-RNN-CRF
 
-The link of pretrained model will be provided
+The link of pretrained model is [here](https://drive.google.com/drive/folders/1BeZm01S7K7Uo-La6pVvT_mETefF6Y3Hh?usp=sharing)
 
 ### 1. CRF
 
