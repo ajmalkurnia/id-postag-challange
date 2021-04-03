@@ -122,6 +122,7 @@ class DLHybridTagger():
         embedding_block = Embedding(
             self.n_chars+1, self.char_embed_size,
             input_length=self.word_length, trainable=True,
+            mask_zero=True,
             embeddings_initializer=RandomUniform(
                 minval=-1*np.sqrt(3/self.char_embed_size),
                 maxval=np.sqrt(3/self.char_embed_size)
@@ -160,6 +161,7 @@ class DLHybridTagger():
             self.vocab_size+1, self.word_embed_size,
             input_length=self.seq_length,
             embeddings_initializer=self.word_embedding,
+            mask_zero=True,
         )
         word_embed_block = word_embed_block(input_word_layer)
         if self.ed > 0:
@@ -205,8 +207,9 @@ class DLHybridTagger():
         Initialize character to index
         """
         vocab = set([*string.printable])
-        self.n_chars = len(vocab)
         self.char2idx = {ch: i+1 for i, ch in enumerate(vocab)}
+        self.char2idx["UNK"] = len(self.char2idx)+1
+        self.n_chars = len(self.char2idx)+1
 
     def __init_w2i(self, data):
         """
@@ -218,9 +221,11 @@ class DLHybridTagger():
                 vocab[w] += 1
         vocab = sorted(vocab.items(), key=lambda d: (d[1], d[0]))
         vocab = [v[0] for v in vocab]
-        vocab = list(reversed(vocab))[:self.vocab_size]
-        self.n_words = len(vocab)
+        # +1 Padding +1 UNK
+        vocab = list(reversed(vocab))[:self.vocab_size-2]
         self.word2idx = {word: idx+1 for idx, word in enumerate(vocab)}
+        self.word2idx["[UNK]"] = len(self.word2idx)+1
+        self.n_words = len(self.word2idx)+1
 
     def __init_l2i(self, data):
         """
@@ -271,6 +276,8 @@ class DLHybridTagger():
                 for k, ch in enumerate(word):
                     if ch in self.char2idx:
                         vector_seq[i, j, k] = self.char2idx[ch]
+                    else:
+                        vector_seq[i, j, k] = self.char2idx["UNK"]
         return vector_seq
 
     def __word_vector(self, inp_seq):
@@ -285,6 +292,8 @@ class DLHybridTagger():
             for j, word in enumerate(data):
                 if word in self.word2idx:
                     vector_seq[i][j] = self.word2idx[word]
+                else:
+                    vector_seq[i][j] = self.word2idx["[UNK]"]
         return vector_seq
 
     def vectorize_input(self, inp_seq):
