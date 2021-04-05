@@ -1,6 +1,6 @@
 # ID POS Tagging
 
-Explore pos-tagging on various indonesian dataset using crf and deep learing method.
+Explore pos-tagging on various indonesian dataset using crf and deep learing method. Read this README in [Indonesian](README.id.md)
 
 ## Dataset
  
@@ -34,7 +34,7 @@ Hyperparameter  : default
 Features        : 
  - Character [1, 6]-gram with added `«` and `»` in the beginning and end of a word
  - Relative position of a token, calculated with `pos/len(text)` 
- - 3-token surrounding current character with `["BOS"]` and `["EOS"]` added in the beginning and ending of a sentence
+ - 3-token surrounding current token with `["BOS"]` and `["EOS"]` added in the beginning and ending of a sentence
  - Various morphology features, such as, `is_alpha`, `is_numeric`, `is_punct`, `has_alpha`, `has_numeric`, `has_punct`, `is_upper_case`, `is_init_upper_case`
 
 #### 2. RNN
@@ -43,8 +43,8 @@ Implementation  : Keras
 Hyperparameter  : 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
 - RNN : LSTM with 100 unit, bidirectional
-- dropout : 0.5 (after Embedding, inside RNN, after RNN)
-- optimizer : "adam"
+- Dropout : 0.5 (after Embedding, inside RNN, after RNN)
+- Optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
 
@@ -61,8 +61,8 @@ Hyperparameter  :
   - #filter = 30, filter_size = 4 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
 - RNN : LSTM with 100 unit, bidirectional
-- dropout : 0.5 (after Embedding, inside RNN, after RNN)
-- optimizer : "adam"
+- Dropout : 0.5 (after Embedding, inside RNN, after RNN)
+- Optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
 
@@ -76,8 +76,8 @@ Implementation  : Keras + Tensorflow Addon (for CRF layer)
 Hyperparameter  : 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
 - RNN : LSTM with 100 unit, bidirectional
-- dropout : 0.5 (after Embedding, inside RNN, after RNN)
-- optimizer : "adam"
+- Dropout : 0.5 (after Embedding, inside RNN, after RNN)
+- Optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
 
@@ -95,8 +95,8 @@ Hyperparameter  :
   - #filter = 30, filter_size = 4 
 - Word embedding config : pretrained [wiki.id](https://fasttext.cc/docs/en/pretrained-vectors.html) from official fasttext
 - RNN : LSTM with 100 unit, bidirectional
-- dropout : 0.5 (after Embedding, inside RNN, after RNN
-- optimizer : "adam"
+- Dropout : 0.5 (after Embedding, inside RNN, after RNN
+- Optimizer : "adam"
 - Vocab size : 10k
 - Train Epoch : 100 + early stopping with 10 patience based on validation
   
