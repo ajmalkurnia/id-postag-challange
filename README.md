@@ -136,6 +136,8 @@ Due to data imbalances, all listed performance is calculated with **weighted-mac
 
 ### IDN Tagger Corpus
 
+The dataset split 80:20 for training and testing respectively. Validation set is used only for deep learning based tagger which takes 10% of the training data.
+
 | Method      | Precision  | Recall     | F1-score   |
 | ----------- | ---------- | ---------- | ---------- |
 | CRF         | **0.9723** | **0.9724** | **0.9721** |
@@ -145,6 +147,8 @@ Due to data imbalances, all listed performance is calculated with **weighted-mac
 | CNN-RNN-CRF | 0.9694     | 0.9694     | 0.9691     |
 
 ### UD ID
+
+The split configuration on this dataset follows the original split from the repo. The CRF tagger combines dev/validation split with training split during training.
 
 | Method      | Precision  | Recall     | F1-score   |
 | ----------- | ---------- | ---------- | ---------- |
